@@ -9,7 +9,7 @@ const createSut = (className: new () => Discount): Discount => {
     return new className();
 };
 
-describe("Messenger", () => {
+describe("Discount", () => {
     afterEach(() => jest.clearAllMocks());
 
     it("should have no discount", () => {
