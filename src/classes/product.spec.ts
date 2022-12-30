@@ -1,0 +1,17 @@
+import { Product } from "./product";
+
+const createSut = (name: string, price: number): Product => {
+    return new Product(name, price);
+};
+
+describe("Messenger", () => {
+    afterEach(() => jest.clearAllMocks());
+
+    it("should return undefined", () => {
+        // System under test
+        const sut = createSut("Camiseta", 49.9);
+
+        expect(sut.name).toBe("Camiseta");
+        expect(sut.price).toBeCloseTo(49.9);
+    });
+});
