@@ -1,3 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-empty-function */
+import { CartItem } from "./interfaces/cart-item";
+import { CustomerOrder } from "./interfaces/customer-protocol";
+import { MessengerProtocol } from "./interfaces/messenger-protocol";
+import { PersistenceProtocol } from "./interfaces/persistence-protocol";
 import { ShoppingCartProtocol } from "./interfaces/shopping-cart-protocol";
 import { Order } from "./order";
 
@@ -6,7 +12,7 @@ class ShoppingCartMock implements ShoppingCartProtocol {
         return [];
     }
 
-    addItem(item: any): void {}
+    addItem(item: CartItem): void {}
 
     removeItem(index: number): void {}
 
@@ -15,7 +21,7 @@ class ShoppingCartMock implements ShoppingCartProtocol {
     }
 
     totalWithDiscount(): number {
-        return 1;
+        return 2;
     }
 
     isEmpty(): boolean {
@@ -25,81 +31,84 @@ class ShoppingCartMock implements ShoppingCartProtocol {
     clear(): void {}
 }
 
-const createSut = () => {
-    const discountMock = createDiscountMock();
-    const sut = new ShoppingCart(discountMock);
-    return { sut, discountMock };
-};
+class MessengerMock implements MessengerProtocol {
+    sendMessage(): void {}
+}
 
-const createDiscountMock = () => {
-    class DiscountMock extends Discount {}
-    return new DiscountMock();
-};
+class PersistenceMock implements PersistenceProtocol {
+    saveOrder(): void {}
+}
 
-const createCartItem = (name: string, price: number) => {
-    class CartItemMock implements CartItem {
-        constructor(public name: string, public price: number) {}
+class CustomerMock implements CustomerOrder {
+    getName(): string {
+        return "";
     }
+    getIDN(): string {
+        return "";
+    }
+}
 
-    return new CartItemMock(name, price);
-};
+const createSut = () => {
+    const shoppingCartMock = new ShoppingCartMock();
+    const messengerMock = new MessengerMock();
+    const customerMock = new CustomerMock();
+    const persistenceMock = new PersistenceMock();
+    const order = new Order(
+        shoppingCartMock,
+        messengerMock,
+        persistenceMock,
+        customerMock,
+    );
 
-const createSutWithProducts = () => {
-    const { sut, discountMock } = createSut();
-    const cartItem1 = createCartItem("T-shirt", 40);
-    const cartItem2 = createCartItem("Cap", 15);
-    sut.addItem(cartItem1);
-    sut.addItem(cartItem2);
-    return { sut, discountMock };
+    return {
+        sut: order,
+        shoppingCartMock,
+        messengerMock,
+        persistenceMock,
+    };
 };
 
 describe("Order", () => {
     it("should not checkout if cart is empty", () => {
-        const { sut } = createSut();
+        const { sut, shoppingCartMock } = createSut();
+        const shoppingCartMockSpy = jest
+            .spyOn(shoppingCartMock, "isEmpty")
+            .mockReturnValueOnce(true);
 
-        expect(sut.isEmpty()).toBe(true);
+        sut.checkout();
+        expect(shoppingCartMockSpy).toHaveBeenCalledTimes(1);
+        expect(sut.orderStatus).toBe("open");
     });
 
-    it("should have 2 cart items", () => {
-        const { sut } = createSutWithProducts();
-        expect(sut.items.length).toBe(2);
+    it("should not checkout if cart is not empty", () => {
+        const { sut, shoppingCartMock } = createSut();
+        const shoppingCartMockSpy = jest
+            .spyOn(shoppingCartMock, "isEmpty")
+            .mockReturnValueOnce(false);
+
+        sut.checkout();
+        expect(shoppingCartMockSpy).toHaveBeenCalledTimes(1);
+        expect(sut.orderStatus).toBe("closed");
     });
 
-    it("should test total and totalWithDiscount", () => {
-        const { sut } = createSutWithProducts();
-        expect(sut.total()).toBe(55);
-        expect(sut.totalWithDiscount()).toBe(55);
+    it("should send an email to customer", () => {
+        const { sut, messengerMock } = createSut();
+        const messengerMockSpy = jest.spyOn(messengerMock, "sendMessage");
+        sut.checkout();
+        expect(messengerMockSpy).toHaveBeenCalledTimes(1);
     });
 
-    it("should add products and clear cart", () => {
-        const { sut } = createSutWithProducts();
-        expect(sut.items.length).toBe(2);
-        sut.clear();
-        expect(sut.items.length).toBe(0);
-        expect(sut.isEmpty()).toBe(true);
+    it("should save order", () => {
+        const { sut, persistenceMock } = createSut();
+        const persistenceMockSpy = jest.spyOn(persistenceMock, "saveOrder");
+        sut.checkout();
+        expect(persistenceMockSpy).toHaveBeenCalledTimes(1);
     });
 
-    it("should remove products", () => {
-        const { sut } = createSutWithProducts();
-        expect(sut.items.length).toBe(2);
-        sut.removeItem(1);
-        expect(sut.items.length).toBe(1);
-        sut.removeItem(0);
-        expect(sut.items.length).toBe(0);
-        expect(sut.isEmpty()).toBe(true);
-    });
-
-    it("should call discount.calculate once when totalWithDiscount is called", () => {
-        const { sut, discountMock } = createSutWithProducts();
-        const discountMockSpy = jest.spyOn(discountMock, "calculate");
-        sut.totalWithDiscount();
-        expect(discountMockSpy).toHaveBeenCalledTimes(1);
-    });
-
-    it("should call discount.calculate with total price when totalWithDiscount is called", () => {
-        const { sut, discountMock } = createSutWithProducts();
-        const discountMockSpy = jest.spyOn(discountMock, "calculate");
-        sut.totalWithDiscount();
-        expect(discountMockSpy).toHaveBeenCalledWith(sut.total());
+    it("should clear cart", () => {
+        const { sut, shoppingCartMock } = createSut();
+        const shoppingCartMockSpy = jest.spyOn(shoppingCartMock, "clear");
+        sut.checkout();
+        expect(shoppingCartMockSpy).toHaveBeenCalledTimes(1);
     });
 });

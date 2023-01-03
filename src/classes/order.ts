@@ -1,4 +1,5 @@
 import { OrderStatus } from "./interfaces/order-status";
+import { CustomerOrder } from "./interfaces/customer-protocol";
 import { ShoppingCartProtocol } from "./interfaces/shopping-cart-protocol";
 import { MessengerProtocol } from "./interfaces/messenger-protocol";
 import { PersistenceProtocol } from "./interfaces/persistence-protocol";
@@ -10,6 +11,7 @@ export class Order {
         private readonly cart: ShoppingCartProtocol,
         private readonly messenger: MessengerProtocol,
         private readonly persistence: PersistenceProtocol,
+        private readonly customer: CustomerOrder,
     ) {}
 
     get orderStatus(): OrderStatus {
@@ -28,5 +30,11 @@ export class Order {
         );
         this.persistence.saveOrder();
         this.cart.clear();
+
+        console.log(
+            "The client is:",
+            this.customer.getName(),
+            this.customer.getIDN(),
+        );
     }
 }
