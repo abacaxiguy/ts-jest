@@ -8,7 +8,7 @@ import { ShoppingCartProtocol } from "./interfaces/shopping-cart-protocol";
 import { Order } from "./order";
 
 class ShoppingCartMock implements ShoppingCartProtocol {
-    get items(): Readonly<any[]> {
+    get items(): Readonly<CartItem[]> {
         return [];
     }
 
